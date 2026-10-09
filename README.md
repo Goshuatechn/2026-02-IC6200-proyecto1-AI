@@ -11,7 +11,7 @@ Reconocimiento de comandos de voz con PyTorch (LeNet-5 y arquitectura alternativ
 
 ## Contrato del modelo (no cambiar sin avisar)
 - Entrada: audio mono, 16 kHz, 1 segundo → tensor float32 de 16000 valores
-- Preprocesamiento: espectrograma calculado dentro del modelo (MelSpectrogram, opset 17)
+- Preprocesamiento: espectrograma calculado dentro del modelo (MelSpectrogram, opset 18)
 - Salida: 10 logits en este orden:
   `yes, no, up, down, left, right, on, off, stop, go`
 - App: ignorar predicciones con confianza < 70 %
