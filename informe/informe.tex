@@ -4,12 +4,12 @@
 \usepackage[T1]{fontenc}
 \usepackage[spanish,es-tabla]{babel}
 \usepackage{amsmath}
+\usepackage[safe]{tipa}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{xcolor}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,fit,calc}
-% Colores de los diagramas
 \definecolor{ioc}{HTML}{ECEBE6}
 \definecolor{prec}{HTML}{FDE6D6}
 \definecolor{convc}{HTML}{CDE2FB}
@@ -19,12 +19,9 @@
 \usepackage[hidelinks]{hyperref}
 \graphicspath{{figuras/}}
 
-% Texto en rojo para lo que falta completar (borrar antes de entregar)
 \newcommand{\pendiente}[1]{\textcolor{red}{[PENDIENTE: #1]}}
-% Celda de tabla pendiente
 \newcommand{\pend}{\textcolor{red}{??}}
 
-% Recuadro temporal para figuras que todavía no existen
 \newcommand{\figtemp}[1]{\fbox{\parbox[c][3cm][c]{0.9\columnwidth}{\centering\small #1}}}
 
 \begin{document}
@@ -53,18 +50,13 @@ Este trabajo presenta un sistema de reconocimiento de 10 comandos de voz (\texti
 reconocimiento de voz, redes convolucionales, LeNet-5, MobileNet, SpecAugment, ONNX Runtime Mobile, Android
 \end{IEEEkeywords}
 
-% =====================================================================
 \section{Introducción}
-% =====================================================================
 Las interfaces por voz permiten interactuar con un dispositivo sin usar las manos. En aplicaciones de hogar inteligente, un conjunto pequeño de comandos es suficiente para navegar entre pantallas, confirmar acciones y controlar dispositivos. Ejecutar el reconocimiento directamente en el teléfono evita depender de servicios en la nube, reduce la latencia y protege la privacidad del usuario, pero obliga a usar modelos pequeños y eficientes.
 
 El objetivo de este proyecto es construir la solución completa: preprocesar el audio, entrenar y comparar dos modelos convolucionales, seleccionar el mejor con base en métricas cuantitativas, exportarlo a ONNX e integrarlo en una aplicación móvil navegable por voz.
 
-El documento se organiza así: la Sección~II resume el estado del arte; la Sección~III describe el dataset, el preprocesamiento y el aumento de datos; la Sección~IV presenta las dos arquitecturas; las Secciones~V y~VI muestran el entrenamiento, la evaluación en test y la selección del modelo; la Sección~VII explica la exportación a ONNX y su validación; la Sección~VIII describe la aplicación móvil y su prueba en el dispositivo; y las Secciones~IX y~X cierran con las limitaciones y las conclusiones.
 
-% =====================================================================
 \section{Estado del arte}
-% =====================================================================
 \subsection{Reconocimiento de palabras clave}
 El reconocimiento de palabras clave (\textit{keyword spotting}, KWS) consiste en detectar un vocabulario pequeño de palabras en clips cortos de audio. A diferencia del reconocimiento de voz continuo, se plantea como un problema de clasificación y suele ejecutarse en el propio dispositivo, por lo que los modelos deben ser pequeños y rápidos~\cite{zhang2017}.
 
@@ -86,9 +78,7 @@ Como los modelos de KWS deben funcionar con voces, micrófonos y ruidos que no a
 \subsection{Despliegue en dispositivos móviles}
 Para ejecutar los modelos en el teléfono se usan formatos de intercambio como ONNX, que describen la red como un grafo independiente del framework de entrenamiento. ONNX Runtime Mobile~\cite{onnxruntime} ejecuta estos modelos en Android e iOS sin conexión a internet, lo que reduce la latencia y protege la privacidad del usuario.
 
-% =====================================================================
 \section{Dataset y preprocesamiento}
-% =====================================================================
 
 \subsection{Dataset}
 Se utilizó el Speech Commands Dataset v0.02~\cite{warden2018}, que contiene clips de aproximadamente un segundo grabados por miles de personas. Se tomaron únicamente los 10 comandos autorizados, para un total de 38\,546 audios (Tabla~\ref{tab:dataset}).
@@ -143,9 +133,7 @@ Para el conjunto \textit{aumentado} se aplicó SpecAugment~\cite{park2019} sobre
 
 La Fig.~\ref{fig:espectro}c muestra un ejemplo. Estas máscaras simulan ruido, partes de la palabra mal captadas y diferencias entre micrófonos, lo que obliga a la red a no depender de una sola región del espectrograma. Los conjuntos de validación y prueba nunca reciben aumento.
 
-% =====================================================================
 \section{Arquitecturas}
-% =====================================================================
 Ambos modelos se implementaron manualmente con \texttt{torch.nn}.
 
 \subsection{Modelo A: LeNet-5}
@@ -175,7 +163,7 @@ FC (logits)          & 10                        & 850 \\
 \end{tabular}}
 \end{table}
 
-\textbf{Modificación respecto al LeNet-5 clásico.} El LeNet-5 original usa activación tanh y submuestreo por promedio (\textit{average pooling}). En este trabajo se usó \textbf{ReLU} y \textbf{max pooling}. La función ReLU evita la saturación de tanh, que reduce el gradiente y hace más lento el entrenamiento, y max pooling conserva la activación más fuerte de cada región, lo que en espectrogramas ayuda a mantener los picos de energía característicos de cada palabra. Además, ReLU es más barata de calcular que tanh, lo cual es relevante para la inferencia en el teléfono. En las pruebas, esta variante fue la que alcanzó la mayor exactitud de todos los modelos (Sección~VI).
+\textbf{Modificación respecto al LeNet-5 clásico.} El LeNet-5 original usa activación tanh y submuestreo por promedio (\textit{average pooling}). En este trabajo se usó \textbf{ReLU} y \textbf{max pooling}. La función ReLU evita la saturación de tanh, que reduce el gradiente y hace más lento el entrenamiento, y max pooling conserva la activación más fuerte de cada región, lo que en espectrogramas ayuda a mantener los picos de energía característicos de cada palabra. Además, ReLU es más barata de calcular que tanh, y eso cuenta cuando el modelo corre en un teléfono. En las pruebas, esta variante fue la que alcanzó la mayor exactitud de todos los modelos (Sección~VI).
 
 \begin{figure*}[htbp]
 \centering
@@ -225,7 +213,7 @@ FC (logits)                      & 10                        & 1\,290 \\
 \end{tabular}}
 \end{table}
 
-El Modelo B tiene unas 52 veces menos parámetros que el Modelo A, lo cual es relevante para el despliegue en un dispositivo móvil.
+El Modelo B tiene unas 52 veces menos parámetros que el Modelo A. En una aplicación móvil esa diferencia pesa.
 
 \begin{figure*}[htbp]
 \centering
@@ -243,7 +231,6 @@ El Modelo B tiene unas 52 veces menos parámetros que el Modelo A, lo cual es re
 \node[pool, right=of d3] (gap) {Pooling\\promedio\\adaptativo\\128};
 \node[fc, right=of gap] (fc) {FC\\10 logits};
 \foreach \x/\y in {in/mel, mel/c1, c1/d1, d1/d2, d2/d3, d3/gap, gap/fc} \draw[flecha] (\x) -- (\y);
-% Detalle del bloque separable
 \node[conv, below=9mm of c1, xshift=12mm] (dw) {Depthwise\\$3{\times}3$, paso 2\\(1 filtro\\por canal)};
 \node[conv, right=of dw] (pw) {Pointwise\\$1{\times}1$\\(combina\\canales)};
 \node[blk, right=of pw, fill=white] (bn) {BatchNorm};
@@ -257,9 +244,7 @@ El Modelo B tiene unas 52 veces menos parámetros que el Modelo A, lo cual es re
 \label{fig:mobilenet}
 \end{figure*}
 
-% =====================================================================
 \section{Entrenamiento}
-% =====================================================================
 Todos los modelos se entrenaron con entropía cruzada como función de pérdida y el optimizador Adam, con semilla fija (42) para que los resultados sean reproducibles. En cada época se evaluó el conjunto de validación y se guardaron los pesos de la época con menor pérdida de validación. Las métricas se registraron en Weights \& Biases.
 
 Para cada una de las cuatro combinaciones (modelo $\times$ datos) se hicieron tres entrenamientos con distintos hiperparámetros, para un total de 12 (Tabla~\ref{tab:corridas}).
@@ -292,18 +277,18 @@ B (MobileNet) & Aumentado  & 3 & 0.001  & 32  & 10 & 9  & \textbf{0.423 / 86.4\,
 \end{table*}
 
 \subsection{Análisis de sobreajuste y subajuste}
-Las curvas de pérdida y exactitud se muestran en las Fig.~\ref{fig:curvas} y~\ref{fig:exactitud}.
-\begin{itemize}
-  \item \textbf{LeNet-5 con datos crudos muestra sobreajuste}: la pérdida de entrenamiento baja hasta 0.03, pero la de validación alcanza su mínimo en la época 4 y luego sube (de 0.35 a 0.62 en el Exp.~1). Guardar los pesos de la mejor época evita quedarse con el modelo sobreajustado.
-  \item \textbf{El aumento de datos corrige el sobreajuste de LeNet-5}: con SpecAugment, la pérdida de validación sigue bajando hasta el final del entrenamiento y la mejor exactitud sube de 89.4\,\% a 91.7\,\%.
-  \item \textbf{MobileNet muestra subajuste}, sobre todo con aumento de datos: su pérdida de validación seguía bajando en las últimas épocas, y la de entrenamiento queda por encima de la de validación porque las máscaras hacen la tarea de entrenamiento más difícil. Con más épocas probablemente mejoraría.
-  \item \textbf{La tasa de aprendizaje de 0.0005 fue la peor} en las cuatro combinaciones: con el mismo número de épocas, el modelo no alcanza a converger.
-\end{itemize}
+Las curvas de pérdida y exactitud están en las Fig.~\ref{fig:curvas} y~\ref{fig:exactitud}. En LeNet-5 con datos crudos el sobreajuste es claro. La pérdida de entrenamiento llega a 0.03, mientras que la de validación toca su mínimo en la época 4 y después sube hasta 0.62 en el Exp.~1. Por eso guardamos los pesos de la época con menor pérdida de validación y no los de la última.
+
+Con SpecAugment ese comportamiento desaparece: la pérdida de validación de LeNet-5 baja hasta el final y la mejor exactitud sube de 89.4\,\% a 91.7\,\%.
+
+MobileNet se comporta distinto. Sus curvas de validación todavía bajaban cuando terminó el entrenamiento, una señal de subajuste. Con aumento de datos su pérdida de entrenamiento queda incluso por encima de la de validación, porque las máscaras solo se aplican al entrenar.
+
+Los tres experimentos de cada combinación cambiaban a la vez la tasa de aprendizaje, el tamaño de lote y el número de épocas, así que sus efectos no se pueden separar del todo. Contar las actualizaciones de los pesos ayuda a compararlos. Con 26\,982 audios de entrenamiento, el Exp.~1 (lote de 64, 15 épocas) hace unas 6\,300 actualizaciones, el Exp.~2 (lote de 128, 15 épocas) unas 3\,200 y el Exp.~3 (lote de 32, 10 épocas) unas 8\,400. El Exp.~2 tenía además la tasa más baja, 0.0005, la mitad del valor por defecto de Adam. Fue el peor en las cuatro combinaciones: con la mitad de la tasa y la mitad de las actualizaciones del Exp.~1, no alcanzó a converger. En LeNet-5, 15 épocas fueron suficientes; en MobileNet la pérdida seguía bajando, y habría necesitado más.
 
 \begin{figure*}[htbp]
 \centering
 \includegraphics[width=0.95\textwidth]{curvas_perdida.png}
-\caption{Pérdida de entrenamiento (punteada) y de validación (sólida) de los 12 entrenamientos, registrada en Weights \& Biases. El punto marca la época con menor pérdida de validación, cuyos pesos se guardaron.}
+\caption{Pérdida de entrenamiento (punteada) y de validación (sólida) de los 12 entrenamientos, con los datos exportados de Weights \& Biases. El punto marca la época con menor pérdida de validación, cuyos pesos se guardaron.}
 \label{fig:curvas}
 \end{figure*}
 
@@ -314,9 +299,7 @@ Las curvas de pérdida y exactitud se muestran en las Fig.~\ref{fig:curvas} y~\r
 \label{fig:exactitud}
 \end{figure*}
 
-% =====================================================================
 \section{Evaluación en test y selección del modelo}
-% =====================================================================
 Los mejores modelos de cada combinación se evaluaron sobre el conjunto de prueba, que no se usó en ningún momento del entrenamiento ni de la selección de hiperparámetros (Tabla~\ref{tab:test}).
 
 \begin{table}[htbp]
@@ -338,34 +321,28 @@ B / Aumentado (Exp.~3)  & 85.8\,\% & 0.859 & 14\,026 \\
 
 \begin{figure*}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{confusion_mejores.png}
-\caption{Matrices de confusión en test del mejor Modelo A y del mejor Modelo B. Cada fila muestra, en porcentaje, cómo se clasificaron los audios de esa palabra; solo se anotan valores de al menos 2\,\%.}
+\includegraphics[width=0.92\textwidth]{confusion_lenet_pares.png}
+\caption{(a) Matriz de confusión en test del modelo final, LeNet-5 aumentado, en número de audios (solo se anotan los valores de 5 o más). (b) Los ocho pares con más errores sumando los dos modelos, comparando LeNet-5 aumentado con MobileNet base. Los datos se exportaron de Weights \& Biases.}
 \label{fig:confusion}
 \end{figure*}
 
 \subsection{Análisis de las matrices de confusión}
-La Fig.~\ref{fig:confusion} muestra que los errores no se reparten al azar, sino que se concentran en pares de palabras que suenan parecido:
+La mayoría de los errores caen en unos pocos pares de palabras (Fig.~\ref{fig:confusion}). En LeNet-5 la palabra con menos aciertos es ``no'' (85.1\,\%): 42 de sus 569 audios de prueba se clasificaron como ``go'' y 33 como ``down''. ``No'' y ``go'' comparten el diptongo /o\textipa{U}/ y solo cambia la consonante inicial, que dura muy poco. ``Down'' tiene otro diptongo, /a\textipa{U}/, pero también cierra en /\textipa{U}/, y su consonante inicial /d/ es una oclusiva sonora igual que la /g/ de ``go''; eso puede explicar que ``go'' y ``down'' también se confundan entre sí (27 audios de ``go'' se predijeron como ``down''). La otra confusión frecuente en LeNet-5 es ``off'' con ``on'' (25 audios) y con ``up'' (20), tres palabras muy cortas con vocales cercanas.
 
-\begin{itemize}
-  \item \textbf{``no'' es la palabra más difícil} en ambos modelos (85.1\,\% de aciertos en A y 82.8\,\% en B). Se confunde sobre todo con ``go'' (7.4\,\% y 8.1\,\%) y con ``down'' (5.8\,\% en A). Las tres comparten el sonido vocálico /o/ y difieren solo en la consonante inicial, que es corta y tiene poca energía en el espectrograma.
-  \item \textbf{``off'' se confunde con ``up'' y ``on''} (3.5\,\% y 4.4\,\% en A): son palabras muy cortas, con vocales cercanas y casi sin consonantes que las distingan.
-  \item \textbf{``go'' se confunde con ``down''} (4.5\,\% en A), de nuevo por la vocal /o/.
-  \item \textbf{Las palabras mejor reconocidas son ``right'' (97.7\,\%) y ``yes'' (97.3\,\%)}, que tienen sonidos muy característicos, como la /s/ de ``yes'', que concentra energía en frecuencias altas.
-  \item En MobileNet aparecen además confusiones que LeNet-5 casi no comete, como ``right''$\rightarrow$``left'' (4.3\,\%) y ``stop''$\rightarrow$``up'' (5.0\,\%), coherentes con su menor capacidad.
-\end{itemize}
+En MobileNet la palabra con menos aciertos es ``go'' (81.1\,\%), seguida de ``no'' (82.8\,\%), y aparecen confusiones que LeNet-5 casi no tiene, como ``right''$\rightarrow$``left'' (25 audios) y ``stop''$\rightarrow$``up'' (28).
 
-Como la matriz de confusión indica que el modelo se equivoca de forma sistemática en estos pares, la aplicación se diseñó asumiendo que habrá errores: solo ejecuta comandos con confianza de al menos 70\,\% y pide confirmación antes de las acciones sensibles.
+Las palabras que LeNet-5 reconoce mejor son ``right'' (97.7\,\%) y ``yes'' (97.3\,\%). En el espectrograma de ``yes'' la /s/ final se ve como energía en las bandas altas (Fig.~\ref{fig:espectro}a).
+
+Con este modelo esos errores no se pueden eliminar del todo, así que en la aplicación importa qué pasa cuando ocurren. El umbral de 70\,\% y la pantalla de confirmación, que estaban en el diseño desde el inicio, evitan que una confusión apague un dispositivo o detenga una rutina sin que el usuario lo quiera.
 
 \subsection{Comparación de modelos finales}
-El modelo seleccionado para la aplicación fue \textbf{LeNet-5 con datos aumentados (Exp.~1)}, por tener la menor pérdida y la mayor exactitud de validación. En test obtuvo 92.2\,\% de exactitud y un F1 de 0.922, muy cercano a su exactitud de validación (91.7\,\%), lo que indica que la selección por validación no sobreestimó su desempeño. Como las clases están balanceadas, la exactitud y el F1 son prácticamente iguales en los cuatro modelos.
+El modelo seleccionado para la aplicación fue \textbf{LeNet-5 con datos aumentados (Exp.~1)}, por tener la menor pérdida y la mayor exactitud de validación. En test obtuvo 92.2\,\% de exactitud y un F1 de 0.922. En validación había tenido 91.7\,\%, así que el resultado se mantuvo con audios que el modelo no había visto. Como las clases están balanceadas, la exactitud y el F1 son prácticamente iguales en los cuatro modelos.
 
 El aumento de datos tuvo efectos opuestos en las dos arquitecturas: en LeNet-5 subió la exactitud en test de 89.8\,\% a 92.2\,\% al reducir el sobreajuste, mientras que en MobileNet la bajó de 88.8\,\% a 85.8\,\%. MobileNet, con muchos menos parámetros, ya estaba en subajuste, y las máscaras de SpecAugment hicieron la tarea de entrenamiento aún más difícil sin darle más épocas para compensar.
 
-El mejor MobileNet (Base) obtuvo 3.4 puntos menos de exactitud en test, pero con 52 veces menos parámetros. Para este proyecto se priorizó la exactitud, porque el modelo de LeNet-5 ocupa solo 3\,MB y en el teléfono de prueba no se percibe demora después de la grabación. En un dispositivo con menos recursos, o con escucha continua, MobileNet sería la opción más eficiente.
+El mejor MobileNet (Base) obtuvo 3.4 puntos menos de exactitud en test, pero con 52 veces menos parámetros. Para este proyecto se priorizó la exactitud, porque el modelo de LeNet-5 ocupa solo 3\,MB y en el teléfono de prueba responde sin una demora perceptible después de la grabación. En un dispositivo con menos recursos, o con escucha continua, MobileNet sería la opción más eficiente.
 
-% =====================================================================
 \section{Exportación a ONNX}
-% =====================================================================
 Para que la aplicación solo tenga que enviar audio crudo, el modelo se exportó dentro de un \textit{wrapper} que incluye todo el preprocesamiento: espectrograma mel, conversión a decibeles y normalización con la media y desviación del entrenamiento. El contrato del modelo es:
 
 \begin{itemize}
@@ -384,11 +361,11 @@ Se compararon las salidas del modelo en PyTorch y del archivo ONNX (ejecutado co
 \end{itemize}
 
 \subsection{Problema encontrado durante la exportación}
-La primera versión exportada no coincidía con el modelo entrenado: el código de exportación redefinía LeNet-5 con tanh y \textit{average pooling} (en lugar de ReLU y \textit{max pooling}) y el \textit{wrapper} omitía la conversión a decibeles y la normalización. El error se detectó porque la exactitud en test cayó a 15\,\%, cercana al azar para 10 clases. Se corrigió reutilizando la misma arquitectura del entrenamiento e incluyendo todo el preprocesamiento en el \textit{wrapper}, y se agregó la validación anterior para confirmar la equivalencia.
+La primera versión del notebook con la exportación a ONNX se subió al repositorio el 9 de octubre, y el 11 integramos ese modelo en la aplicación. Cargaba sin errores, pero algo no cuadraba: con un segundo de puro silencio respondía ``go''. El 12, al revisar el notebook, encontramos dos diferencias entre el modelo exportado y el entrenado. La celda de exportación volvía a definir LeNet-5 con tanh y \textit{average pooling}, cuando el entrenamiento había usado ReLU y \textit{max pooling}; los pesos cargaban sin error porque los nombres y tamaños de las capas eran iguales. Además, el \textit{wrapper} calculaba el espectrograma mel pero se saltaba la conversión a decibeles y la normalización. Eso también explicaba que la evaluación en test diera 15\,\%, cercano al azar, porque esa celda se ejecutaba después de la redefinición.
 
-% =====================================================================
+El 13 por la tarde, todavía con ese modelo, hicimos la primera prueba en el teléfono: al decir ``down'' respondió ``go'' con 39\,\% de confianza. Esa noche quedó en el repositorio la corrección, que reutiliza la misma clase del entrenamiento, agrega la conversión a decibeles y la normalización al \textit{wrapper}, y suma la comparación PyTorch--ONNX de la sección anterior, que en la primera versión no existía.
+
 \section{Aplicación móvil}
-% =====================================================================
 La aplicación se desarrolló para Android en Kotlin con Jetpack Compose (Android 7.0 o superior). La inferencia se realiza localmente con ONNX Runtime Mobile 1.27.0: la aplicación no usa servicios externos y no solicita el permiso de internet.
 
 \subsection{Pantallas}
@@ -434,8 +411,11 @@ Toda la lógica pasa por una única función, \texttt{handle(comando)}, que deci
 
 La grabación y la inferencia se ejecutan en un hilo secundario para no congelar la interfaz.
 
+\subsection{Problemas durante el desarrollo}
+El modelo exportado venía en dos archivos, el \texttt{.onnx} con el grafo y un \texttt{.onnx.data} con los pesos. Para cargarlo desde la carpeta de recursos de la aplicación hubo que unirlos en un solo archivo de 3\,MB, y desde la versión corregida se exporta así directamente. Los otros dos problemas fueron más simples. Al separar el código en cuatro archivos quedó una copia vieja de \texttt{MainActivity.kt} con todas las clases adentro, y el compilador lanzaba errores de \textit{Redeclaration} hasta que la borramos. En otro momento, al pegar código, terminó texto de Kotlin dentro del \texttt{AndroidManifest.xml} y el proyecto dejó de compilar hasta reemplazar el archivo.
+
 \subsection{Prueba en el dispositivo}
-La aplicación se probó en un Motorola Moto g54 5G (Android 14) con un hablante que no forma parte del dataset, en un ambiente silencioso, repitiendo cada comando 5 veces (Tabla~\ref{tab:prueba}).
+La aplicación se probó en un Motorola Moto g54 5G (Android 14), repitiendo cada comando 5 veces (Tabla~\ref{tab:prueba}). La hizo uno de los autores, hablante nativo de español; como el dataset está grabado sobre todo por angloparlantes, el acento puede influir en las confianzas más bajas.
 
 \begin{table}[htbp]
 \caption{Prueba en el dispositivo (5 intentos por comando)}
@@ -465,13 +445,11 @@ Total & 49/50 (98\,\%) & 43/50 (86\,\%) & 90.2\,\% \\
 \parbox{\columnwidth}{\footnotesize $^{*}$Promedio de la confianza en los intentos donde se detectó la palabra correcta.}
 \end{table}
 
-El modelo identificó la palabra correcta en 49 de los 50 intentos (98\,\%), y 43 de ellos (86\,\%) superaron el umbral y se ejecutaron. Los 7 intentos restantes fueron descartados: 6 eran detecciones correctas con confianza baja (dos de ``up'', dos de ``off'', uno de ``no'' y uno de ``left'') y 1 fue el único error, un ``off'' clasificado como ``up'' con 62\,\% de confianza. Gracias al umbral, \textbf{ningún intento produjo una acción incorrecta}.
+La palabra correcta apareció en 49 de los 50 intentos y 43 superaron el umbral. De los 7 descartados, 6 eran detecciones correctas con poca confianza: dos de ``up'', dos de ``off'', uno de ``no'' y uno de ``left''. El séptimo fue el único error de la prueba, un ``off'' que el modelo tomó como ``up'' con 62\,\% de confianza. Como no llegó al umbral, la aplicación no hizo nada, y en toda la prueba no hubo acciones incorrectas.
 
-Estos resultados coinciden con la evaluación en test: las palabras con menor confianza en el teléfono (``no'', ``up'' y ``off'') son también las de menor exactitud en la matriz de confusión (Fig.~\ref{fig:confusion}), y el único error, ``off''$\rightarrow$``up'', es una de las confusiones más frecuentes observadas allí. El umbral funciona como un compromiso: evita acciones equivocadas a cambio de que el usuario deba repetir algunos comandos.
+``No'', ``up'' y ``off'', las palabras con confianza más baja en el teléfono, también están entre las de menor exactitud en test, y ``off''$\rightarrow$``up'' es una de las confusiones que aparecen en la Fig.~\ref{fig:confusion}. Con el umbral en 70\,\%, esos 6 comandos correctos habrían tenido que repetirse.
 
-% =====================================================================
 \section{Limitaciones}
-% =====================================================================
 \begin{itemize}
   \item La prueba en el dispositivo se hizo con un solo hablante, en un ambiente silencioso y con 5 repeticiones por comando. Es una muestra pequeña e indicativa.
   \item La aplicación graba exactamente 1 segundo desde que se toca el botón. Si el usuario habla tarde, la palabra puede quedar cortada.
@@ -479,24 +457,17 @@ Estos resultados coinciden con la evaluación en test: las palabras con menor co
   \item La división del dataset fue aleatoria por audio, por lo que un mismo hablante puede aparecer en entrenamiento y en prueba. Esto puede hacer que la exactitud en test sea algo optimista.
 \end{itemize}
 
-% =====================================================================
 \section{Conclusiones}
-% =====================================================================
-Se construyó un sistema completo de reconocimiento de 10 comandos de voz, desde el preprocesamiento del audio hasta una aplicación Android que ejecuta el modelo sin conexión a internet. De los 12 entrenamientos realizados se obtienen las siguientes conclusiones:
+Construimos el sistema completo, desde el preprocesamiento del audio hasta una aplicación Android que reconoce los 10 comandos sin conexión a internet.
 
-\begin{itemize}
-  \item \textbf{El mejor modelo fue LeNet-5 con datos aumentados}, con 92.2\,\% de exactitud y F1 de 0.922 en test. Su resultado en test fue casi igual al de validación (91.7\,\%), lo que indica que la selección del modelo no sobreestimó su desempeño.
-  \item \textbf{El efecto del aumento de datos depende de la capacidad del modelo.} SpecAugment corrigió el sobreajuste de LeNet-5 y subió su exactitud en 2.4 puntos, pero empeoró a MobileNet, que con sus 14\,000 parámetros ya estaba en subajuste y habría necesitado más épocas.
-  \item \textbf{MobileNet es una alternativa muy eficiente.} Con 52 veces menos parámetros quedó solo 3.4 puntos por debajo de LeNet-5, lo que lo hace atractivo para dispositivos con menos recursos o para escucha continua.
-  \item \textbf{Los errores se concentran en palabras que suenan parecido}, como ``no'', ``go'' y ``down'', u ``off'', ``on'' y ``up''. Por eso la aplicación se diseñó asumiendo que habrá errores: solo actúa con confianza de al menos 70\,\% y pide confirmación antes de las acciones sensibles.
-  \item \textbf{Incluir el preprocesamiento dentro del modelo ONNX simplifica la aplicación}, que solo envía audio crudo, pero exige validar el modelo exportado contra el original. Esa validación permitió detectar y corregir un error de exportación que habría dejado la aplicación sin funcionar.
-\end{itemize}
+El modelo de la aplicación es LeNet-5 entrenado con SpecAugment, con 92.2\,\% de exactitud en test. El aumento de datos le sirvió a LeNet-5 porque frenó el sobreajuste, pero a MobileNet lo perjudicó: con 14\,000 parámetros y las mismas épocas ya le costaba aprender, y las máscaras le complicaron más la tarea. Aun así, MobileNet quedó solo 3.4 puntos por debajo con 52 veces menos parámetros, y sería la mejor opción si la aplicación tuviera que escuchar de forma continua o correr en un teléfono más limitado.
 
-Finalmente, en la prueba en el teléfono con un hablante ajeno al dataset, el modelo reconoció correctamente 49 de 50 comandos y, gracias al umbral de confianza, no ejecutó ninguna acción incorrecta.
+Los errores del modelo se concentran en pocos pares de palabras, sobre todo ``no''/``go'' y ``off''/``on''/``up''. En el teléfono reconoció 49 de 50 comandos, y el único error no se ejecutó porque quedó por debajo del umbral.
 
-Como trabajo futuro, se podría entrenar MobileNet por más épocas, agregar clases de ``silencio'' y ``palabra desconocida'', dividir el dataset por hablante y permitir la escucha continua sin necesidad de tocar un botón.
+Meter el preprocesamiento dentro del ONNX simplificó la aplicación, pero un error en la celda de exportación produjo un modelo que cargaba bien y no reconocía nada. Comparar las salidas de PyTorch y de ONNX sobre audios reales debió ser parte del proceso desde el principio.
 
-% =====================================================================
+Como trabajo futuro quedan entrenar MobileNet por más épocas, agregar clases de ``silencio'' y ``palabra desconocida'', dividir el dataset por hablante y permitir la escucha continua.
+
 \begin{thebibliography}{00}
 
 \bibitem{lecun1998} Y. LeCun, L. Bottou, Y. Bengio y P. Haffner, ``Gradient-based learning applied to document recognition,'' \textit{Proceedings of the IEEE}, vol. 86, no. 11, pp. 2278--2324, 1998.
